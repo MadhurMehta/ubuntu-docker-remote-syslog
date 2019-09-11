@@ -1,4 +1,5 @@
 
+
 # Ubuntu Docker
 - Ubuntu docker image to receive logs from remote server and push to system logs 
 - Java application to push logs to remote server over UDP using log4j2
@@ -45,6 +46,8 @@ Specify a syslog tag of ‘testlog4j’
 ------------------------------------------------------------------------------------------
 
 #### Send log4j2 messages to Syslog
+Send log4j2 messages to Syslog
+```
 import org.apache.logging.log4j.*;
 
 public class TestLog4j {
@@ -64,10 +67,9 @@ public class TestLog4j {
                      new Exception("I forced this exception",exc));
          }
          logger.fatal("fatal message");
-      }    
-
+      }
 }
-----------
+```
 
 Dependencies: log4j-api -<version>.jar and log4j-core-<version>.jar
 
@@ -157,8 +159,7 @@ public class TestLogback {
              logger.error("error message with stack trace slf4j",
                      new Exception("I forced this exception",exc));
          }
-      }    
-
+      }
 }
 ```
 Dependencies: slf4j-api-<version>.jar, logback-core-<version>.jar, and logback-classic-<version>.jar
