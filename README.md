@@ -1,55 +1,50 @@
-# ubuntu-docker-remote-syslog
-Ubuntu docker image to receive system logs from remote server
 
-**Syslog**: Sending Java log4j2 to rsyslog on Ubuntu
-
-Enable rsyslog on receiving Ubuntu Server
-Modify ‘/etc/rsyslog.conf’ (uncomment the lines that listen on the port 514 UDP port)
-Additionally, add a line defining the template  ‘jsonRfc5424Template’ which will allow us to write the log information as json.
+# Ubuntu Docker
+- Ubuntu docker image to receive logs from remote server and push to system logs 
+- Java application to push logs to remote server over UDP using log4j2
 
 ----------
-- provides UDP syslog reception, uncomment the two lines below
-$ModLoad imudp
-$UDPServerRun 514
-$UDPServerAddress 127.0.0.1
+#### Ubuntu setup
+1. Enable rsyslog on receiving Ubuntu Server,
+2. Modify ‘/etc/rsyslog.conf’ (uncomment the lines that listen on the port 514 UDP port),
+3. Additionally, add a line defining the template  ‘jsonRfc5424Template’ which will allow us to write the log information as json.
 
-$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
-- add the line below which provides json output
-$template $template jsonRfc5424Template,"{\"type\":\"syslog\",\"host\":\"%HOSTNAME%\",\"message\":\"<%PRI%>1 %TIMESTAMP:::date-rfc3339% %HOSTNAME% %APP-NAME% %PROCID% %MSGID% %STRUCTURED-DATA% %msg:::json%\"}\n"
-----------
+In order to receive UDP syslog, uncomment the lines below
+> $ModLoad imudp
+> $UDPServerRun 514
+> $UDPServerAddress 127.0.0.1
 
-Restart the rsyslog service and the log output should go to ‘/var/log/syslog’.
+add the line below ($ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat) which provides json output
+> $template $template jsonRfc5424Template,"{\"type\":\"syslog\",\"host\":\"%HOSTNAME%\",\"message\":\"<%PRI%>1 %TIMESTAMP:::date-rfc3339% %HOSTNAME% %APP-NAME% %PROCID% %MSGID% %STRUCTURED-DATA% %msg:::json%\"}\n"
 
-Have our application logs written to their own file in a json format:
+
+4. Restart the rsyslog service and the log output should go to ‘/var/log/syslog’.
+
+5. Have our application logs written to their own file in a json format:
 Create ‘/etc/rsyslog.d/30-testlog4j.conf’ with the content below which tells syslog to write any syslog messages from ‘testlog4j’ to their own file in json format, and then stop any further processing on the message
 
-----------
-if $programname == 'testlog4j' or $syslogtag == 'testlog4j' then /var/log/testlog4j/testlog4j.log;jsonRfc5424Template
-& stop
-----------
+> if $programname == 'testlog4j' or $syslogtag == 'testlog4j' then /var/log/testlog4j/testlog4j.log;jsonRfc5424Template & stop
 
-Create the log directory and make sure the syslog port 514 is enabled on the local firewall and restart the rsyslog service
+6. Create the log directory and make sure the syslog port 514 is enabled on the local firewall and restart the rsyslog service
 - mkdir -p /var/log/testlog4j
 - chown syslog:syslog /var/log/testlog4j
 - chmod 755 /var/log/testlog4j
 - ufw allow 514/udp
 - service rsyslog restart
 
-If the rsyslog service is not started (“ps -A | grep rsyslog”), then errors in the rsyslog configuration can be found by:
-- rsyslogd -N1
+7. If the rsyslog service is not started (“ps -A | grep rsyslog”), then errors in the rsyslog configuration can be found by:
+> rsyslogd -N1
 
-Validating syslog processing
+8. Validating syslog processing
 From the host where the Java application server will actually run, use the standard Ubuntu ‘logger’ utility to send syslog messages via UDP
-- logger -p local0.warn -d -n myhost "test message to catchall" -u /ignore/socket
+> logger -p local0.warn -d -n myhost "test message to catchall" -u /ignore/socket
 Specify a syslog tag of ‘testlog4j’
-- logger -t testlog4j -p local0.warn -d -n myhost "to testlog4j" -u /ignore/socket
+> logger -t testlog4j -p local0.warn -d -n myhost "to testlog4j" -u /ignore/socket
 
 
 ------------------------------------------------------------------------------------------
 
-Send log4j2 messages to Syslog
-
-----------
+#### Send log4j2 messages to Syslog
 import org.apache.logging.log4j.*;
 
 public class TestLog4j {
@@ -126,23 +121,23 @@ log4j2.xml
 
 
 Using the <Syslog> element, you get the following output:
-{"type":"syslog","host":"myhost","message":"<132>1 2016-10-16T21:25:20.931-05:00 myhost testc - Audit [testlog4j@18060 category="TestLog4j" exception="" priority="WARN" thread="main"] warn message"}
+> {"type":"syslog","host":"myhost","message":"<132>1 2016-10-16T21:25:20.931-05:00 myhost testc - Audit [testlog4j@18060 category="TestLog4j" exception="" priority="WARN" thread="main"] warn message"}
 {"type":"syslog","host":"myhost","message":"<131>1 2016-10-16T21:25:20.933-05:00 myhost testc - Audit [testlog4j@18060 category="TestLog4j" exception="" priority="ERROR" thread="main"] error message"}
 {"type":"syslog","host":"myhost","message":"<131>1 2016-10-16T21:25:20.933-05:00 myhost testc - Audit [testlog4j@18060 category="TestLog4j" exception="java.lang.Exception: I forced this exception#012#011at TestLog4j.main(TestLog4j.java:26)#012Caused by: java.lang.ArithmeticException: / by zero#012#011at TestLog4j.main(TestLog4j.java:23)#012" priority="ERROR" thread="main"] error message with stack trace"}
 {"type":"syslog","host":"myhost","message":"<129>1 2016-10-16T21:25:20.936-05:00 myhost testc - Audit [testlog4j@18060 category="TestLog4j" exception="" priority="FATAL" thread="main"] fatal message"}
 
-While the <Socket> produces the following:
-{"type":"syslog","host":"myhost","message":"<134>1 2016-10-16T21:28:31-05:00 myhost testc - - -  {         \"thread\":\"main\",         \"priority\":\"WARN\",         \"category\":\"TestLog4j\",         \"exception\":\"\"         }"}
+While the **Socket** produces the following:
+> {"type":"syslog","host":"myhost","message":"<134>1 2016-10-16T21:28:31-05:00 myhost testc - - -  {         \"thread\":\"main\",         \"priority\":\"WARN\",         \"category\":\"TestLog4j\",         \"exception\":\"\"         }"}
 {"type":"syslog","host":"myhost","message":"<134>1 2016-10-16T21:28:31-05:00 myhost testc - - -  {         \"thread\":\"main\",         \"priority\":\"ERROR\",         \"category\":\"TestLog4j\",         \"exception\":\"\"         }"}
 {"type":"syslog","host":"myhost","message":"<134>1 2016-10-16T21:28:31-05:00 myhost testc - - -  {         \"thread\":\"main\",         \"priority\":\"ERROR\",         \"category\":\"TestLog4j\",         \"exception\":\" java.lang.Exception: I forced this exception#012#011at TestLog4j.main(TestLog4j.java:26)#012Caused by: java.lang.ArithmeticException: / by zero#012#011at TestLog4j.main(TestLog4j.java:23)#012\"         }"}
 {"type":"syslog","host":"myhost","message":"<134>1 2016-10-16T21:28:31-05:00 myhost testc - - -  {         \"thread\":\"main\",         \"priority\":\"FATAL\",         \"category\":\"TestLog4j\",         \"exception\":\"\"         }"}
 
 ------------------------------------------------------------------------------------------
 
-Syslog: Sending Java SLF4J/Logback to Syslog
+#### Sending Java SLF4J/Logback to Syslog
 
 Send slf4j2 messages to Syslog
-
+```
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,7 +160,7 @@ public class TestLogback {
       }    
 
 }
-
+```
 Dependencies: slf4j-api-<version>.jar, logback-core-<version>.jar, and logback-classic-<version>.jar
 
 logback.xml
@@ -197,8 +192,7 @@ logback.xml
 
 The raw data sent will look something like below:
 
-----------
-<135>Oct 17 06:37:55 myhost testlog4j debug message slf4j thread:main priority:DEBUG category:TestLogback exception:
+> <135>Oct 17 06:37:55 myhost testlog4j debug message slf4j thread:main priority:DEBUG category:TestLogback exception:
 <134>Oct 17 06:37:55 myhost testlog4j info message slf4j thread:main priority:INFO category:TestLogback exception:
 <132>Oct 17 06:37:55 myhost testlog4j warn message slf4j thread:main priority:WARN category:TestLogback exception:
 <131>Oct 17 06:37:55 myhost testlog4j error message slf4j thread:main priority:ERROR category:TestLogback exception:
